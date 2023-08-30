@@ -6,12 +6,13 @@ import {
 } from "react-native";
 import resolversForPeripherals from "./resolversForPeripherals.mjs";
 import _ from "lodash";
+import ui from "@/styles/ui.css.js";
+import styles from "./styles.css.js";
+import * as utils from '@/libs/utils.mjs';
+import cacheLogger from '@/libs/cacheLogger.mjs';
 
 import Drawer from "../../components/Drawer/Drawer";
 import ListItem from "./components/ListItem";
-import ui from "@/styles/ui.css.js";
-import styles from "./styles.css.js";
-import utils from "@/libs/utils.mjs";
 
 const BleManagerModule = NativeModules.BleManager;
 const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
@@ -32,7 +33,7 @@ const ScnDetail = (props) => {
   useEffect(() => {
     const peripheral = props.peripherals.get(peripheralId) ?? peripheralDefault;
     setPeripheral(peripheral);
-    const resolversForPeripheral = resolversForPeripherals.find(r4p => r4p.id === peripheralId) ?? null;
+    const resolversForPeripheral = resolversForPeripherals.find(r4p => r4p._finder(peripheral)) ?? null;
     setResolversForPeripheral(resolversForPeripheral);
   }, [props.peripherals]);
 
@@ -76,11 +77,11 @@ const ScnDetail = (props) => {
         .then(() => {
           props.BleManager.retrieveServices(peripheral.id)
             .then(info => {
-              console.debug("[retrieveServices] success:", info);
+              cacheLogger.debug("[retrieveServices] success:", info);
               setPeripheralInfo(info);
             })
             .catch(error => {
-              console.debug("[retrieveServices] failed:", error);
+              cacheLogger.debug("[retrieveServices] failed:", error);
             });
         });
     }
@@ -107,6 +108,9 @@ const ScnDetail = (props) => {
     const listeners = [
       bleManagerEmitter.addListener("BleManagerDidUpdateValueForCharacteristic", (data) => {
         const { value, peripheral, characteristic, service } = data;
+        const valueInHex = utils.transArrFromDecToHex(value);
+        data.valueInHex = valueInHex;
+        data.valueLength = value.length;
         const serviceAbbr = utils.isStandardBLEUUID(service) ? service.slice(4, 8) : service;
         const characteristicAbbr = utils.isStandardBLEUUID(characteristic) ? characteristic.slice(4, 8) : characteristic;
 
@@ -117,21 +121,21 @@ const ScnDetail = (props) => {
           for (const item of resolversForPeripheral.characteristics) {
             if (item.service === serviceAbbr.toLowerCase() && item.characteristic === characteristicAbbr.toLowerCase()) {
               // 獲取解析後的測量值
-              resolvedMsg = item.resolver(value).message;
-              title = item.title;
+              resolvedMsg = item._resolver(value).message;
+              title = item._title;
               break;
             }
           }
         }
 
         // 更新 log
-        let msg = `收到消息 <${utils.getHeadAndTail(serviceAbbr, 8, 4)}> <${utils.getHeadAndTail(characteristicAbbr, 8, 4)}> ${JSON.stringify(value)}`;
+        let msg = `收到消息 <${utils.getHeadAndTail(serviceAbbr, 8, 4)}> <${utils.getHeadAndTail(characteristicAbbr, 8, 4)}> [${value}] [${valueInHex}]`;
         msg = resolvedMsg ? `${msg} | <${title}> ${resolvedMsg}` : msg;
         pushLog(msg);
-        console.debug(`[UpdateValueForCharacteristic] ${characteristic}`, data);
+        cacheLogger.debug(`[UpdateValueForCharacteristic] ${characteristic}`, data);
       }),
       bleManagerEmitter.addListener("BleManagerDidUpdateState", (args) => {
-        console.log(`[BleManagerDidUpdateState]`, args);
+        cacheLogger.log(`[BleManagerDidUpdateState]`, args);
       }),
     ];
     if (peripheral.connecting === true) {
@@ -163,7 +167,7 @@ const ScnDetail = (props) => {
               .find(knownC => c.characteristic.toLowerCase() === knownC.characteristic && c.service.toLowerCase() === knownC.service);
             const newInfo = _.clone(c);
             newInfo.isKnown = !!knownInfo;
-            newInfo.title = knownInfo?.title ?? "未知特徴";
+            newInfo.title = knownInfo?._title ?? "未知特徴";
             return newInfo;
           })
           // 按照是否已知來排序
@@ -179,10 +183,10 @@ const ScnDetail = (props) => {
         if (c.properties?.Notify === "Notify" || c.properties?.Indicate === "Indicate") {
           props.BleManager.startNotification(peripheral.id, c.service, c.characteristic)
             .then(() => {
-              console.debug("[startNotification] success:", peripheral.id, c.service, c.characteristic);
+              cacheLogger.debug("[startNotification] success:", peripheral.id, c.service, c.characteristic);
             })
             .catch((error) => {
-              console.debug("[startNotification] error:", error);
+              cacheLogger.debug("[startNotification] error:", error);
             });
         }
       }
@@ -194,10 +198,10 @@ const ScnDetail = (props) => {
           if (c.properties?.Notify === "Notify" || c.properties?.Indicate === "Indicate") {
             props.BleManager.stopNotification(peripheral.id, c.service, c.characteristic)
               .then(() => {
-                console.debug("[stopNotification] success:", peripheral.id, c.service, c.characteristic);
+                cacheLogger.debug("[stopNotification] success:", peripheral.id, c.service, c.characteristic);
               })
               .catch((error) => {
-                console.debug("[stopNotification] error:", error);
+                cacheLogger.debug("[stopNotification] error:", error);
               });
           }
         }

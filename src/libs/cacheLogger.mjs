@@ -1,11 +1,10 @@
 import RNFS from 'react-native-fs';
 import moment from 'moment';
 import _ from 'lodash';
-import utils from '@/libs/utils.mjs';
+import { tryFn, stringify, formatBytes } from '@/libs/utils.mjs';
 import { Platform } from "react-native";
 import config from '@/app.config.js';
 
-const { tryFn, stringify, formatBytes } = utils;
 
 // 記錄到文件，並在控制台輸出
 const cacheLogger = {
@@ -36,7 +35,7 @@ function append(print, type, ...args) {
   RNFS.appendFile(
     `${dirPathForLogFiles}/${m.format('YYYYMMDD')}.log`,
     '# ' + `[${m.format()}][${type.toUpperCase()}]\n` +
-    '- ' + args.map(arg => tryFn(() => stringify(arg))).join('\n- ') +
+    '- ' + args.map(arg => stringify(arg)).join('\n- ') +
     '\n\n',
     'utf8'
   ).catch((err) => console.warn(err.message));

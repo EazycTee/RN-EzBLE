@@ -1,12 +1,13 @@
 {
   "name": "EzBLE",
-  "version": "1.0.1",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
     "start": "npx react-native start",
     "start:reset-cache": "npx react-native start --reset-cache",
     "adb:reverse": "adb reverse tcp:8081 tcp:8081",
-    "android": "npx react-native run-android --mode=debug",
+    "android:debug": "npx react-native run-android --mode=debug",
+    "android:release": "npx react-native run-android --mode=release",
     "ios": "npx react-native run-ios"
   },
   "dependencies": {

@@ -10,6 +10,7 @@ import { createStackNavigator, CardStyleInterpolators } from "@react-navigation/
 import { NavigationContainer, useNavigationContainerRef } from "@react-navigation/native";
 import BleManager from "@/libs/BleManager.mjs";
 import usePermissions from "@/hooks/usePermissions";
+import cacheLogger from '@/libs/cacheLogger.mjs';
 
 import ScnList from "./ScnList";
 import ScnDetail from "./ScnDetail";
@@ -57,7 +58,7 @@ const NavBluetoothDemo = (props) => {
   const handleStopScan = () => {
     setIsScanning(false);
     setIsStopping(false);
-    // console.debug("[handleStopScan] discovered peripherals:", Array.from(peripherals.values()));
+    // cacheLogger.debug("[handleStopScan] discovered peripherals:", Array.from(peripherals.values()));
   };
 
   const handleDisconnectedPeripheral = (event) => {
@@ -65,20 +66,20 @@ const NavBluetoothDemo = (props) => {
     const peripheral = peripherals.get(peripheralId);
     if (peripheral) {
       addOrUpdatePeripheral(peripheral.id, { ...peripheral, connecting: false, connected: false });
-      console.debug(`[handleDisconnectedPeripheral][${peripheral.id}] previously connected peripheral is disconnected.`, peripheral);
+      cacheLogger.debug(`[handleDisconnectedPeripheral][${peripheral.id}] previously connected peripheral is disconnected.`, peripheral);
       if (peripheral.autoReconnect) {
-        console.log(`[handleDisconnectedPeripheral][${peripheral.id}] reconnect peripheral in 3 seconds...`);
+        cacheLogger.log(`[handleDisconnectedPeripheral][${peripheral.id}] reconnect peripheral in 3 seconds...`);
         setTimeout(() => {
           const peripheral = peripherals.get(peripheralId);
           peripheral.autoReconnect && connectPeripheral(peripheral.id);
         }, 3000);
       }
     }
-    console.debug(`[handleDisconnectedPeripheral][${event.peripheral}] disconnected.`);
+    cacheLogger.debug(`[handleDisconnectedPeripheral][${event.peripheral}] disconnected.`);
   };
 
   const handleUpdateValueForCharacteristic = (data) => {
-    console.debug(
+    cacheLogger.debug(
       `[handleUpdateValueForCharacteristic] received data from '${data.peripheral}' with characteristic='${data.characteristic}' and value='${data.value}'`,
     );
   };
@@ -87,7 +88,7 @@ const NavBluetoothDemo = (props) => {
     if (!peripheral.name) return;
     if (!peripheral.advertising.isConnectable) return;
 
-    // console.debug("[handleDiscoverPeripheral] new BLE peripheral=", peripheral);
+    cacheLogger.debug("[handleDiscoverPeripheral]", peripheral);
     addOrUpdatePeripheral(peripheral.id, {
       ...peripheral,
       connecting: false,
@@ -97,11 +98,11 @@ const NavBluetoothDemo = (props) => {
   };
 
   const togglePeripheralConnection = (peripheral) => {
-    // console.log('togglePeripheralConnection', peripheral)
+    // cacheLogger.log('togglePeripheralConnection', peripheral)
     if (peripheral && peripheral.connected) {
       BleManager.disconnect(peripheral.id)
         .catch(error => {
-          console.error(`[togglePeripheralConnection][${peripheral.id}] error when trying to disconnect device.`, error);
+          cacheLogger.error(`[togglePeripheralConnection][${peripheral.id}] error when trying to disconnect device.`, error);
         });
     } else {
       connectPeripheral(peripheral.id);
@@ -112,11 +113,11 @@ const NavBluetoothDemo = (props) => {
     try {
       const connectedPeripherals = await BleManager.getConnectedPeripherals();
       if (connectedPeripherals.length === 0) {
-        console.warn("[retrieveConnected] No connected peripherals found.");
+        cacheLogger.warn("[retrieveConnected] No connected peripherals found.");
         return;
       }
 
-      console.debug(
+      cacheLogger.debug(
         "[retrieveConnected] connectedPeripherals",
         connectedPeripherals,
       );
@@ -126,7 +127,7 @@ const NavBluetoothDemo = (props) => {
         addOrUpdatePeripheral(peripheral.id, { ...peripheral, connecting: false, connected: true });
       }
     } catch (error) {
-      console.error(
+      cacheLogger.error(
         "[retrieveConnected] unable to retrieve connected peripherals.",
         error,
       );
@@ -139,14 +140,14 @@ const NavBluetoothDemo = (props) => {
       addOrUpdatePeripheral(peripheral.id, { ...peripheral, connecting: true, connected: false });
       BleManager.connect(peripheral.id)
         .then(() => {
-          console.debug(`[connectPeripheral][${peripheral.id}] connected.`);
+          cacheLogger.debug(`[connectPeripheral][${peripheral.id}] connected.`);
           addOrUpdatePeripheral(peripheral.id, { ...peripheral, connecting: false, connected: true });
         })
         .catch(error => {
-          console.error(`[connectPeripheral][${peripheral.id}] connectPeripheral error`, error);
+          cacheLogger.error(`[connectPeripheral][${peripheral.id}] connectPeripheral error`, error);
           addOrUpdatePeripheral(peripheral.id, { ...peripheral, connecting: false, connected: false });
           if (peripheral.autoReconnect) {
-            console.debug(`[connectPeripheral][${peripheral.id}] reconnectPeripheral in 3 seconds...`);
+            cacheLogger.debug(`[connectPeripheral][${peripheral.id}] reconnectPeripheral in 3 seconds...`);
             setTimeout(() => {
               connectPeripheral(peripheral.id);
             }, 4000);
@@ -161,20 +162,20 @@ const NavBluetoothDemo = (props) => {
     if (peripheral && peripheral.bonded) {
       BleManager.removeBond(id)
         .then(() => {
-          console.log("removeBond success");
+          cacheLogger.log("removeBond success");
           addOrUpdatePeripheral(peripheral.id, { ...peripheral, bonded: false });
         })
         .catch(() => {
-          console.log("fail to remove the bond");
+          cacheLogger.log("fail to remove the bond");
         });
     } else {
       BleManager.createBond(id)
         .then(() => {
-          console.log("createBond success or there is already an existing one");
+          cacheLogger.log("createBond success or there is already an existing one");
           if (peripheral) addOrUpdatePeripheral(peripheral.id, { ...peripheral, bonded: true });
         })
         .catch(() => {
-          console.log("fail to bond");
+          cacheLogger.log("fail to bond");
         });
     }
   };
@@ -190,9 +191,9 @@ const NavBluetoothDemo = (props) => {
 
     // 初始化 BleManager
     BleManager.start({ showAlert: false })
-      .then(() => console.debug("BleManager started."))
+      .then(() => cacheLogger.debug("BleManager started."))
       .catch(error =>
-        console.error("BeManager could not be started.", error),
+        cacheLogger.error("BeManager could not be started.", error),
       );
 
     BleManager.autoScan();
@@ -253,8 +254,8 @@ const NavBluetoothDemo = (props) => {
       {/* react-native-orientation-locker (https://github.com/wonday/react-native-orientation-locker) */}
       <OrientationLocker
         orientation={UNLOCK}
-        onChange={orientation => console.log("onChange", orientation)}
-        onDeviceChange={orientation => console.log("onDeviceChange", orientation)}
+        onChange={orientation => cacheLogger.log("onChange", orientation)}
+        onDeviceChange={orientation => cacheLogger.log("onDeviceChange", orientation)}
       />
       <StatusBar barStyle="light-content" backgroundColor="#222"/>
       <NavigationContainer ref={navigationRef}>

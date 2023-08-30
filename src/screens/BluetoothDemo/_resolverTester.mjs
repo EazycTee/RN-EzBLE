@@ -1,32 +1,26 @@
-import resolvers from './resolversForPeripherals.mjs'
+import peripherals from './resolversForPeripherals.mjs'
+import utils from './_utils.mjs';
 
 let notification = {}
 
 notification = {
-  "value": [128, 53, 54, 54, 55, 55, 54, 54, 53, 53, 52],
-  "service": "cdeacb80-5235-4c07-8846-93a37ee6b86d",
-  "characteristic": "cdeacb81-5235-4c07-8846-93a37ee6b86d",
-  "peripheral": "A4:C1:38:9A:C0:D3",
+  value: [207, 0, 0, 254, 1, 0, 0, 0, 0, 1, 49],
+  valueInHex: ["CF", "00", "00", "FE", "01", "00", "00", "00", "00", "01", "31"],
+  valueLength: 11,
+  service: "0000fff0-0000-1000-8000-00805f9b34fb",
+  characteristic: "0000fff4-0000-1000-8000-00805f9b34fb",
+  peripheral: "CF:E6:15:12:02:93",
 }
 
-// notification = {
-//   "value": [129, 255, 127, 0],
-//   "service": "cdeacb80-5235-4c07-8846-93a37ee6b86d",
-//   "characteristic": "cdeacb81-5235-4c07-8846-93a37ee6b86d",
-//   "peripheral": "A4:C1:38:9A:C0:D3",
-// }
-//
-// notification = {
-//   "value": [129, 68, 88, 11],
-//   "service": "cdeacb80-5235-4c07-8846-93a37ee6b86d",
-//   "characteristic": "cdeacb81-5235-4c07-8846-93a37ee6b86d",
-//   "peripheral": "A4:C1:38:9A:C0:D3",
-// }
-
-
-const resolver = resolvers
-  .find(r => r.id === notification.peripheral).characteristics
-  .find(c => c.characteristic === notification.characteristic.toUpperCase())
-  .resolver
-const res = resolver(notification.value)
+const characteristic = utils.isStandardBLEUUID(notification.characteristic) ?
+  notification.characteristic.slice(4, 8) :
+  notification.characteristic
+const service = utils.isStandardBLEUUID(notification.service) ?
+  notification.service.slice(4, 8) :
+  notification.service
+const interpreter = peripherals
+  .find(r => r.name === 'HealthScale').characteristics
+  .find(c => c.characteristic === characteristic.toLowerCase() && c.service === service.toLowerCase())
+  ._resolver
+const res = interpreter(notification.value)
 console.log(res)
